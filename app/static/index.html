@@ -1,0 +1,98 @@
+
+ <!DOCTYPE html>
+<html>
+<head>
+  <title>Stripe Payment</title>
+  <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+  <h1>Stripe Payment Form</h1>
+
+   Payment Form -->
+  <form id="payment-form">
+    <div id="card-element"></div>
+    <button type="submit">Pay</button>
+  </form>
+
+  <h2>Retrieve Payment Method</h2>
+  Retrieve Payment Form
+  <input type="text" id="payment-id" placeholder="Enter Payment ID" required>
+  <button onclick="retrievePaymentMethod()">Retrieve Payment Method</button>
+
+  <div id="result"></div>
+
+  <script>
+    var stripe = Stripe('pk_test_51Pgl742LeFdiFZkFJ6kSkb2en4xZP8WuLPjV9lsfzwVXr67aAwk3J0O3zlfTQ5n5MbIrgqBBy4uHTuXnaJ9tt5Mm00h0JZ2Hik');
+    var elements = stripe.elements();
+    var card = elements.create('card');
+    card.mount('#card-element');
+
+    
+    var form = document.getElementById('payment-form');
+    form.addEventListener('submit', async function(event) {
+      event.preventDefault();
+      
+      const {token, error} = await stripe.createToken(card);
+      
+      if (error) {
+        console.error(error);
+      } else {
+        // Send token to your server
+        fetch('/payments/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({token: token.id}),
+          
+        }).then(function(response) {
+            console.log(token.id)
+          return response.json();
+        }).then(function(data) {
+          console.log(data);
+          console.log(token.id)
+          document.getElementById('result').innerHTML = `
+            <h3>Payment Method Created</h3>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          `;
+        }).catch(function(error) {
+          console.error(error);
+          document.getElementById('result').innerHTML = `
+            <h3>Error Creating Payment Method</h3>
+            <pre>${error.message}</pre>
+          `;
+        });
+      }
+    });
+
+    // Retrieve payment method
+    async function retrievePaymentMethod() {
+      const paymentId = document.getElementById('payment-id').value;
+
+      if (!paymentId) {
+        alert('Please enter a payment ID.');
+        return;
+      }
+
+      try {
+        const response = await fetch(`/payments/${paymentId}`);
+        const data = await response.json();
+        
+        // Display the payment method details
+        document.getElementById('result').innerHTML = `
+          <h3>Payment Method Details</h3>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        `;
+      } catch (error) {
+        console.error('Error fetching payment method:', error);
+        document.getElementById('result').innerHTML = `
+          <h3>Error Retrieving Payment Method</h3>
+          <pre>${error.message}</pre>
+        `;
+      }
+    }
+  </script>
+</body>
+</html> 
+
+
